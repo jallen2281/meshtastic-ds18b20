@@ -1,0 +1,24 @@
+---
+Lora:
+  # Adafruit RFM95 bonnet defaults; adjust if your revision differs.
+  Module: RF95
+  Reset: 25
+  CS: 7
+  IRQ: 22
+  Busy: 23
+  gpiochip: 0
+  spidev: spidev0.0
+
+I2C:
+  # OLED bonnet uses the standard Raspberry Pi I2C bus.
+  I2CDevice: /dev/i2c-1
+
+Display:
+  # OLED panels are auto-detected on Portduino; no panel selection needed.
+
+Logging:
+  LogLevel: info
+
+General:
+  MaxNodes: 200
+  MaxMessageQueue: 100

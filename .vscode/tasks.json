@@ -1,0 +1,91 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "PlatformIO",
+			"task": "Build",
+			"problemMatcher": [
+				"$platformio"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"label": "PlatformIO: Build"
+		},
+		{
+			"label": "Copilot: PIO Upload rak4631_eth_gw",
+			"type": "shell",
+			"command": "C:\\Users\\jalle\\.platformio\\penv\\Scripts\\pio.exe",
+			"args": [
+				"run",
+				"--target",
+				"upload",
+				"-e",
+				"rak4631_eth_gw"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Copilot: PIO Build rak4631_eth_gw",
+			"type": "shell",
+			"command": "C:\\Users\\jalle\\.platformio\\penv\\Scripts\\pio.exe",
+			"args": [
+				"run",
+				"-e",
+				"rak4631_eth_gw"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Copilot: PIO Clean rak4631_eth_gw",
+			"type": "shell",
+			"command": "C:\\Users\\jalle\\.platformio\\penv\\Scripts\\pio.exe",
+			"args": [
+				"run",
+				"-t",
+				"clean",
+				"-e",
+				"rak4631_eth_gw"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Copilot: PIO Build rak4631_eth_gw",
+			"type": "shell",
+			"command": "C:\\Users\\jalle\\.platformio\\penv\\Scripts\\pio.exe",
+			"args": [
+				"run",
+				"-e",
+				"rak4631_eth_gw"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Copilot: PIO Build rak4631_eth_gw retry",
+			"type": "shell",
+			"command": "C:\\Users\\jalle\\.platformio\\penv\\Scripts\\pio.exe",
+			"args": [
+				"run",
+				"-e",
+				"rak4631_eth_gw"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "Copilot: PIO Upload rak4631_eth_gw_dbg",
+			"type": "shell",
+			"command": "C:\\Users\\jalle\\.platformio\\penv\\Scripts\\platformio.exe",
+			"args": [
+				"run",
+				"--target",
+				"upload",
+				"--environment",
+				"rak4631_eth_gw_dbg",
+				"--upload-port",
+				"COM7"
+			],
+			"isBackground": false
+		}
+	]
+}
