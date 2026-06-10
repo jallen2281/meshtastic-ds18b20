@@ -23,6 +23,7 @@
 #endif
 
 // Sensors
+#if !MESHTASTIC_DS18B20_TEMP_ONLY
 #include "Sensor/AHT10.h"
 #include "Sensor/BME280Sensor.h"
 #include "Sensor/BME680Sensor.h"
@@ -43,8 +44,10 @@
 #include "Sensor/T1000xSensor.h"
 #include "Sensor/TSL2591Sensor.h"
 #include "Sensor/VEML7700Sensor.h"
+#endif
 #include "Sensor/DS18B20Sensor.h"
 
+#if !MESHTASTIC_DS18B20_TEMP_ONLY
 BMP085Sensor bmp085Sensor;
 BMP280Sensor bmp280Sensor;
 BME280Sensor bme280Sensor;
@@ -67,6 +70,7 @@ BMP3XXSensor bmp3xxSensor;
 T1000xSensor t1000xSensor;
 #endif
 CGRadSensSensor cgRadSens;
+#endif
 DS18B20Sensor ds18b20Sensor;
 
 #define FAILED_STATE_SENSOR_READ_MULTIPLIER 10
