@@ -1,4 +1,5 @@
 #define HAS_SCREEN 1
 #define CANNED_MESSAGE_MODULE_ENABLE 1
+#define PIN_WIRE_DS18B20 4
 #define MAX_RX_TOPHONE settingsMap[maxtophone]
 #define MAX_NUM_NODES settingsMap[maxnodes]
