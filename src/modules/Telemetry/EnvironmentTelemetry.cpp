@@ -774,6 +774,7 @@ AdminMessageHandleResult EnvironmentTelemetryModule::handleAdminMessageForModule
                                                                                  meshtastic_AdminMessage *response)
 {
     AdminMessageHandleResult result = AdminMessageHandleResult::NOT_HANDLED;
+#if !MESHTASTIC_DS18B20_TEMP_ONLY
     if (dfRobotLarkSensor.hasSensor()) {
         result = dfRobotLarkSensor.handleAdminMessage(mp, request, response);
         if (result != AdminMessageHandleResult::NOT_HANDLED)
@@ -884,6 +885,11 @@ AdminMessageHandleResult EnvironmentTelemetryModule::handleAdminMessageForModule
         if (result != AdminMessageHandleResult::NOT_HANDLED)
             return result;
     }
+#else
+    (void)mp;
+    (void)request;
+    (void)response;
+#endif
     return result;
 }
 
