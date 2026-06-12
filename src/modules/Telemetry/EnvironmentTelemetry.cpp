@@ -283,6 +283,7 @@ int32_t EnvironmentTelemetryModule::runOnce()
 #ifdef T1000X_SENSOR_EN
             result = t1000xSensor.runOnce();
 #else
+#if !MESHTASTIC_DS18B20_TEMP_ONLY
             if (dfRobotLarkSensor.hasSensor())
                 result = dfRobotLarkSensor.runOnce();
             if (bmp085Sensor.hasSensor())
@@ -329,6 +330,7 @@ int32_t EnvironmentTelemetryModule::runOnce()
                 result = max17048Sensor.runOnce();
             if (cgRadSens.hasSensor())
                 result = cgRadSens.runOnce();
+#endif
             // DS18B20 is OneWire, not found by I2C scan. Register it manually so hasSensor() returns true.
             nodeTelemetrySensorsMap[meshtastic_TelemetrySensorType_DS18B20].first = PIN_WIRE_DS18B20;
             result = ds18b20Sensor.runOnce();
@@ -340,8 +342,10 @@ int32_t EnvironmentTelemetryModule::runOnce()
         if (!moduleConfig.telemetry.environment_measurement_enabled) {
             return disable();
         } else {
+#if !MESHTASTIC_DS18B20_TEMP_ONLY
             if (bme680Sensor.hasSensor())
                 result = bme680Sensor.runTrigger();
+#endif
         }
 
         if (((lastSentToMesh == 0) ||
