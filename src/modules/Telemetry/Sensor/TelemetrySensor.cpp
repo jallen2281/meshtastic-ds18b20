@@ -7,4 +7,6 @@
 #include "TelemetrySensor.h"
 #include "main.h"
 
+void TelemetrySensor::setup() {}
+
 #endif
