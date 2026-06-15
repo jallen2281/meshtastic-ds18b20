@@ -152,7 +152,10 @@ void portduinoSetup()
     // Need to bind all the configured GPIO pins so they're not simulated
     // TODO: Can we do this in the for loop above?
     // TODO: If one of these fails, we should log and terminate
-    if (settingsMap.count(cs) > 0 && settingsMap[cs] != RADIOLIB_NC) {
+    // When using Linux spidev, chip-select is managed by the kernel SPI driver.
+    // Claiming the same CS line through libgpiod can fail and later crash on reconfigure.
+    const bool hasSpiDev = settingsStrings.count(spidev) > 0 && settingsStrings[spidev] != "";
+    if (!hasSpiDev && settingsMap.count(cs) > 0 && settingsMap[cs] != RADIOLIB_NC) {
         if (initGPIOPin(settingsMap[cs], gpioChipName) != ERRNO_OK) {
             settingsMap[cs] = RADIOLIB_NC;
         }
