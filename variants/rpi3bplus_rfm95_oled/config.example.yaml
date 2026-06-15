@@ -5,7 +5,7 @@ Lora:
   Reset: 25
   CS: 7
   IRQ: 22
-  Busy: 23
+  Busy: -1
   gpiochip: 0
   spidev: spidev0.1
 
