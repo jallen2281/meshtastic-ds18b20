@@ -7,7 +7,7 @@ Lora:
   IRQ: 22
   Busy: 23
   gpiochip: 0
-  spidev: spidev0.0
+  spidev: spidev0.1
 
 I2C:
   # OLED bonnet uses the standard Raspberry Pi I2C bus.
