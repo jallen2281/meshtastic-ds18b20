@@ -159,6 +159,7 @@ bool DS18B20Sensor::readTStringAddresses(std::vector<SensorAddress> &addresses)
 
     uint8_t oneWireAddress[8];
     bool foundDs2431 = false;
+    uint8_t ds2431Count = 0;
 
     oneWire->reset_search();
 
@@ -176,29 +177,29 @@ bool DS18B20Sensor::readTStringAddresses(std::vector<SensorAddress> &addresses)
         memcpy(ds2431Address, oneWireAddress, sizeof(ds2431Address));
 
         foundDs2431 = true;
-        LOG_INFO("Found DS2431 T-String EEPROM at %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", ds2431Address[0],
-                 ds2431Address[1], ds2431Address[2], ds2431Address[3], ds2431Address[4], ds2431Address[5],
-                 ds2431Address[6], ds2431Address[7]);
+        ds2431Count++;
+        LOG_INFO("Found DS2431 T-String EEPROM #%u at %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", ds2431Count,
+                 ds2431Address[0], ds2431Address[1], ds2431Address[2], ds2431Address[3],
+                 ds2431Address[4], ds2431Address[5], ds2431Address[6], ds2431Address[7]);
 
-        if (readAddressesFromEeprom(ds2431Address, addresses)) {
-            cachedTStringAddresses = addresses;
-            hasCachedTStringAddresses = true;
-            break;
-        }
+        readAddressesFromEeprom(ds2431Address, addresses);
     }
 
     oneWire->reset_search();
 
+    discoveredTString = true;
+
     if (!foundDs2431) {
         LOG_DEBUG("No DS2431 EEPROM found on OneWire bus; falling back to direct DS18B20 scan");
-        discoveredTString = true;  // Mark discovery attempt complete
     }
 
-    if (addresses.empty()) {
+    if (!addresses.empty()) {
+        cachedTStringAddresses = addresses;
+        hasCachedTStringAddresses = true;
+        LOG_INFO("T-String discovery complete: %u sensors across %u DS2431 chip(s)", (unsigned)addresses.size(), ds2431Count);
+    } else {
         hasCachedTStringAddresses = false;
         cachedTStringAddresses.clear();
-    } else {
-        discoveredTString = true;  // Mark successful discovery
     }
 
     return !addresses.empty();
