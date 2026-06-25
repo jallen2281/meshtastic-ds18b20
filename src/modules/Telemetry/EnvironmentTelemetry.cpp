@@ -703,6 +703,40 @@ meshtastic_MeshPacket *EnvironmentTelemetryModule::allocReply()
 
 bool EnvironmentTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
 {
+#if defined(MESHTASTIC_DS18B20_TEMP_ONLY)
+    if (ds18b20Sensor.getTStringCount() > 1) {
+        bool sentAny = false;
+        for (uint8_t i = 0; i < ds18b20Sensor.getTStringCount(); i++) {
+            meshtastic_Telemetry m = meshtastic_Telemetry_init_zero;
+            m.which_variant = meshtastic_Telemetry_environment_metrics_tag;
+            m.time = getTime();
+            if (!ds18b20Sensor.getMetricsForTString(i, &m)) {
+                LOG_WARN("T-String %u: no valid readings, skipping packet", i + 1);
+                continue;
+            }
+            LOG_INFO("T-String %u send: temp=%.2f uid=%s", i + 1,
+                     m.variant.environment_metrics.temperature,
+                     m.variant.environment_metrics.address1);
+            sensor_read_error_count = 0;
+            meshtastic_MeshPacket *p = allocDataProtobuf(m);
+            p->to = dest;
+            p->decoded.want_response = false;
+            p->priority = (config.device.role == meshtastic_Config_DeviceConfig_Role_SENSOR)
+                              ? meshtastic_MeshPacket_Priority_RELIABLE
+                              : meshtastic_MeshPacket_Priority_BACKGROUND;
+            if (lastMeasurementPacket != nullptr)
+                packetPool.release(lastMeasurementPacket);
+            lastMeasurementPacket = packetPool.allocCopy(*p);
+            if (phoneOnly) {
+                service->sendToPhone(p);
+            } else {
+                service->sendToMesh(p, RX_SRC_LOCAL, true);
+            }
+            sentAny = true;
+        }
+        return sentAny;
+    }
+#endif
     meshtastic_Telemetry m = meshtastic_Telemetry_init_zero;
     m.which_variant = meshtastic_Telemetry_environment_metrics_tag;
     m.time = getTime();
@@ -735,8 +769,9 @@ bool EnvironmentTelemetryModule::sendTelemetry(NodeNum dest, bool phoneOnly)
 
         LOG_INFO("Send: radiation=%fµR/h", m.variant.environment_metrics.radiation);
         
-        LOG_INFO("Before encode - temp1=%.2f has_temp1=%d", m.variant.environment_metrics.temperature1, 
+        LOG_INFO("Before encode - temp1=%.2f has_temp1=%d", m.variant.environment_metrics.temperature1,
                  m.variant.environment_metrics.has_temperature1);
+        LOG_INFO("Before encode - addr1: %s", m.variant.environment_metrics.address1);
 
         updateTemperatureLedColor(m.variant.environment_metrics);
 

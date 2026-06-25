@@ -12,7 +12,7 @@
 #include <DebugConfiguration.h>
 #include <mesh-pb-constants.h>
 
-StaticJsonDocument<1024> jsonObj;
+StaticJsonDocument<2048> jsonObj;
 StaticJsonDocument<1024> arrayObj;
 
 std::string MeshPacketSerializer::JsonSerialize(const meshtastic_MeshPacket *mp, bool shouldLog)
@@ -101,6 +101,11 @@ std::string MeshPacketSerializer::JsonSerialize(const meshtastic_MeshPacket *mp,
                         jsonObj["payload"]["temperature5"] = roundTo3(tempForMqtt(decoded->variant.environment_metrics.temperature5));
                     if (decoded->variant.environment_metrics.has_temperature6)
                         jsonObj["payload"]["temperature6"] = roundTo3(tempForMqtt(decoded->variant.environment_metrics.temperature6));
+                    // address1 is a SINGULAR STRING holding the DS2431 UID as a 16-char hex string.
+                    const auto &em = decoded->variant.environment_metrics;
+                    if (em.address1[0] != '\0') {
+                        jsonObj["payload"]["t_string_uid"] = em.address1;
+                    }
                 } else if (decoded->which_variant == meshtastic_Telemetry_air_quality_metrics_tag) {
                     jsonObj["payload"]["pm10"] = (unsigned int)decoded->variant.air_quality_metrics.pm10_standard;
                     jsonObj["payload"]["pm25"] = (unsigned int)decoded->variant.air_quality_metrics.pm25_standard;

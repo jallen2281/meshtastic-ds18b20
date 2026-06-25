@@ -10,6 +10,9 @@ constexpr uint8_t kMaxTStringSensors = 6;
 constexpr uint16_t kTStringAddressOffset = 8;
 constexpr uint16_t kTStringAddressBytes = kMaxTStringSensors * 8;
 constexpr uint8_t kDs18b20FamilyCode = 0x28;
+// DS18B20 sentinel values that indicate bad/missing readings
+constexpr float kDs18b20MaxValidTemp = 125.0f;  // DS18B20 specified max; all-bits-high error patterns exceed this at any resolution
+constexpr float kDs18b20PowerOnReset = 85.0f;   // factory default value at power-on
 }
 
 DS18B20Sensor::DS18B20Sensor() : TelemetrySensor(meshtastic_TelemetrySensorType_DS18B20, "DS18B20"), oneWire(nullptr), sensors(nullptr)
@@ -62,9 +65,14 @@ int32_t DS18B20Sensor::runOnce()
     }
 
     sensors->begin();
+    // Parasite-power mode: reduce resolution to lower conversion current demand.
+    // At 12-bit (750ms) a 4.7kΩ pull-up cannot supply enough current for multiple sensors.
+    // 9-bit (93.75ms) cuts conversion time and peak current by ~8x.
+    sensors->setResolution(9);
     logRawOneWireDevices();
     status = sensors->getDeviceCount() > 0;
     LOG_INFO("Detected %d DS18B20 sensors", sensors->getDeviceCount());
+    LOG_INFO("Parasite power mode: %s", sensors->isParasitePowerMode() ? "YES" : "NO");
 
     if (!status) {
         LOG_DEBUG("No DS18B20 sensors found on initial scan; keeping sensor active for retry");
@@ -77,6 +85,11 @@ int32_t DS18B20Sensor::runOnce()
 }
 
 void DS18B20Sensor::setup() {}
+
+static bool isValidTempReading(float tempC)
+{
+    return tempC != DEVICE_DISCONNECTED_C && tempC != kDs18b20PowerOnReset && tempC <= kDs18b20MaxValidTemp;
+}
 
 bool DS18B20Sensor::isValidDs18b20Address(const uint8_t address[8]) const
 {
@@ -161,6 +174,7 @@ bool DS18B20Sensor::readTStringAddresses(std::vector<SensorAddress> &addresses)
     bool foundDs2431 = false;
     uint8_t ds2431Count = 0;
 
+    cachedDs2431SensorCounts.clear();
     oneWire->reset_search();
 
     while (oneWire->search(oneWireAddress)) {
@@ -182,7 +196,13 @@ bool DS18B20Sensor::readTStringAddresses(std::vector<SensorAddress> &addresses)
                  ds2431Address[0], ds2431Address[1], ds2431Address[2], ds2431Address[3],
                  ds2431Address[4], ds2431Address[5], ds2431Address[6], ds2431Address[7]);
 
+        SensorAddress ds2431Uid;
+        memcpy(ds2431Uid.address, ds2431Address, 8);
+        cachedDs2431Uids.push_back(ds2431Uid);
+
+        size_t countBefore = addresses.size();
         readAddressesFromEeprom(ds2431Address, addresses);
+        cachedDs2431SensorCounts.push_back((uint8_t)(addresses.size() - countBefore));
     }
 
     oneWire->reset_search();
@@ -200,6 +220,8 @@ bool DS18B20Sensor::readTStringAddresses(std::vector<SensorAddress> &addresses)
     } else {
         hasCachedTStringAddresses = false;
         cachedTStringAddresses.clear();
+        cachedDs2431Uids.clear();
+        cachedDs2431SensorCounts.clear();
     }
 
     return !addresses.empty();
@@ -217,18 +239,26 @@ bool DS18B20Sensor::getMetrics(meshtastic_Telemetry *measurement)
         LOG_DEBUG("No DS18B20 sensors currently detected");
     }
 
-    sensors->requestTemperatures();
-
     sensorReadings.clear();
 
     std::vector<SensorAddress> tStringAddresses;
+    bool parasitePower = sensors->isParasitePowerMode();
+
     if (readTStringAddresses(tStringAddresses)) {
         for (uint8_t index = 0; index < tStringAddresses.size(); ++index) {
-            float tempC = sensors->getTempC(tStringAddresses[index].address);
+            float tempC;
+            if (parasitePower) {
+                // Convert one sensor at a time: peak draw is 1×1.5mA instead of N×1.5mA
+                sensors->requestTemperaturesByAddress(tStringAddresses[index].address);
+                tempC = sensors->getTempC(tStringAddresses[index].address);
+            } else {
+                if (index == 0) sensors->requestTemperatures();
+                tempC = sensors->getTempC(tStringAddresses[index].address);
+            }
             float tempF = (tempC * 9.0f / 5.0f) + 32.0f;
 
-            if (tempC == DEVICE_DISCONNECTED_C) {
-                LOG_WARN("T-String DS18B20 slot %u is disconnected", index + 1);
+            if (!isValidTempReading(tempC)) {
+                LOG_WARN("T-String DS18B20 slot %u invalid reading: %.4f°C", index + 1, tempC);
                 continue;
             }
 
@@ -239,6 +269,7 @@ bool DS18B20Sensor::getMetrics(meshtastic_Telemetry *measurement)
                      tStringAddresses[index].address[6], tStringAddresses[index].address[7], tempC, tempF);
         }
     } else {
+        sensors->requestTemperatures();
         uint8_t deviceCount = sensors->getDeviceCount();
 
         for (uint8_t i = 0; i < deviceCount; ++i) {
@@ -247,10 +278,10 @@ bool DS18B20Sensor::getMetrics(meshtastic_Telemetry *measurement)
                 continue;
             }
 
-            float tempC = sensors->getTempCByIndex(i);
+            float tempC = parasitePower ? sensors->getTempC(address) : sensors->getTempCByIndex(i);
             float tempF = (tempC * 9.0f / 5.0f) + 32.0f;
 
-            if (tempC == DEVICE_DISCONNECTED_C) {
+            if (!isValidTempReading(tempC)) {
                 continue;
             }
 
@@ -274,28 +305,47 @@ bool DS18B20Sensor::getMetrics(meshtastic_Telemetry *measurement)
 
             if (i == 0) {
                 measurement->variant.environment_metrics.has_temperature1 = true;
-                memcpy(measurement->variant.environment_metrics.address1, sensorReadings[i].address, 8);
                 measurement->variant.environment_metrics.temperature1 = tempToReport;
             } else if (i == 1) {
                 measurement->variant.environment_metrics.has_temperature2 = true;
-                memcpy(measurement->variant.environment_metrics.address2, sensorReadings[i].address, 8);
                 measurement->variant.environment_metrics.temperature2 = tempToReport;
             } else if (i == 2) {
                 measurement->variant.environment_metrics.has_temperature3 = true;
-                memcpy(measurement->variant.environment_metrics.address3, sensorReadings[i].address, 8);
                 measurement->variant.environment_metrics.temperature3 = tempToReport;
             } else if (i == 3) {
                 measurement->variant.environment_metrics.has_temperature4 = true;
-                memcpy(measurement->variant.environment_metrics.address4, sensorReadings[i].address, 8);
                 measurement->variant.environment_metrics.temperature4 = tempToReport;
             } else if (i == 4) {
                 measurement->variant.environment_metrics.has_temperature5 = true;
-                memcpy(measurement->variant.environment_metrics.address5, sensorReadings[i].address, 8);
                 measurement->variant.environment_metrics.temperature5 = tempToReport;
             } else if (i == 5) {
                 measurement->variant.environment_metrics.has_temperature6 = true;
-                memcpy(measurement->variant.environment_metrics.address6, sensorReadings[i].address, 8);
                 measurement->variant.environment_metrics.temperature6 = tempToReport;
+            }
+        }
+
+        // Map DS2431 T-String UIDs into address slots (one per T-String, not per sensor)
+        for (uint8_t i = 0; i < cachedDs2431Uids.size() && i < kMaxTStringSensors; ++i) {
+            if (i == 0) {
+                const uint8_t *uid = cachedDs2431Uids[i].address;
+                snprintf(measurement->variant.environment_metrics.address1, 17,
+                         "%02X%02X%02X%02X%02X%02X%02X%02X",
+                         uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
+            } else if (i == 1) {
+                measurement->variant.environment_metrics.has_address2 = true;
+                memcpy(measurement->variant.environment_metrics.address2, cachedDs2431Uids[i].address, 8);
+            } else if (i == 2) {
+                measurement->variant.environment_metrics.has_address3 = true;
+                memcpy(measurement->variant.environment_metrics.address3, cachedDs2431Uids[i].address, 8);
+            } else if (i == 3) {
+                measurement->variant.environment_metrics.has_address4 = true;
+                memcpy(measurement->variant.environment_metrics.address4, cachedDs2431Uids[i].address, 8);
+            } else if (i == 4) {
+                measurement->variant.environment_metrics.has_address5 = true;
+                memcpy(measurement->variant.environment_metrics.address5, cachedDs2431Uids[i].address, 8);
+            } else if (i == 5) {
+                measurement->variant.environment_metrics.has_address6 = true;
+                memcpy(measurement->variant.environment_metrics.address6, cachedDs2431Uids[i].address, 8);
             }
         }
 
@@ -321,6 +371,85 @@ bool DS18B20Sensor::getMetrics(meshtastic_Telemetry *measurement)
     }
 
     return false;
+}
+
+bool DS18B20Sensor::getMetricsForTString(uint8_t tStringIndex, meshtastic_Telemetry *measurement)
+{
+    if (!sensors || tStringIndex >= cachedDs2431Uids.size() || tStringIndex >= cachedDs2431SensorCounts.size()) {
+        return false;
+    }
+
+    uint8_t startIdx = 0;
+    for (uint8_t i = 0; i < tStringIndex; i++) {
+        startIdx += cachedDs2431SensorCounts[i];
+    }
+    uint8_t count = cachedDs2431SensorCounts[tStringIndex];
+
+    if (startIdx >= cachedTStringAddresses.size() || count == 0) {
+        return false;
+    }
+
+    float tempSum = 0;
+    uint8_t validCount = 0;
+    uint8_t slotNum = 0;
+
+    for (uint8_t j = 0; j < count && (startIdx + j) < cachedTStringAddresses.size(); j++) {
+        const uint8_t *addr = cachedTStringAddresses[startIdx + j].address;
+
+        sensors->requestTemperaturesByAddress(addr);
+        float tempC = sensors->getTempC(addr);
+
+        if (!isValidTempReading(tempC)) {
+            LOG_WARN("T-String %u sensor %u invalid: %.4f C", tStringIndex + 1, j + 1, tempC);
+            continue;
+        }
+
+        LOG_INFO("T-String %u sensor %u: %.2f C", tStringIndex + 1, j + 1, tempC);
+        tempSum += tempC;
+
+        switch (slotNum++) {
+            case 0:
+                measurement->variant.environment_metrics.has_temperature1 = true;
+                measurement->variant.environment_metrics.temperature1 = tempC;
+                break;
+            case 1:
+                measurement->variant.environment_metrics.has_temperature2 = true;
+                measurement->variant.environment_metrics.temperature2 = tempC;
+                break;
+            case 2:
+                measurement->variant.environment_metrics.has_temperature3 = true;
+                measurement->variant.environment_metrics.temperature3 = tempC;
+                break;
+            case 3:
+                measurement->variant.environment_metrics.has_temperature4 = true;
+                measurement->variant.environment_metrics.temperature4 = tempC;
+                break;
+            case 4:
+                measurement->variant.environment_metrics.has_temperature5 = true;
+                measurement->variant.environment_metrics.temperature5 = tempC;
+                break;
+            case 5:
+                measurement->variant.environment_metrics.has_temperature6 = true;
+                measurement->variant.environment_metrics.temperature6 = tempC;
+                break;
+        }
+        validCount++;
+    }
+
+    if (validCount == 0) {
+        return false;
+    }
+
+    measurement->variant.environment_metrics.has_temperature = true;
+    measurement->variant.environment_metrics.temperature = tempSum / validCount;
+    measurement->variant.environment_metrics.has_multiple_temperatures = validCount > 1;
+
+    const uint8_t *uid = cachedDs2431Uids[tStringIndex].address;
+    snprintf(measurement->variant.environment_metrics.address1, 17,
+             "%02X%02X%02X%02X%02X%02X%02X%02X",
+             uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
+
+    return true;
 }
 
 #endif

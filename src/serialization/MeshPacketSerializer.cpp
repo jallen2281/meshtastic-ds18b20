@@ -86,6 +86,10 @@ std::string MeshPacketSerializer::JsonSerialize(const meshtastic_MeshPacket *mp,
                     msgPayload["temperature4"] = new JSONValue(decoded->variant.environment_metrics.temperature4);
                     msgPayload["temperature5"] = new JSONValue(decoded->variant.environment_metrics.temperature5);
                     msgPayload["temperature6"] = new JSONValue(decoded->variant.environment_metrics.temperature6);
+                    // address1 is a SINGULAR STRING holding the DS2431 T-String UID as a 16-char hex string.
+                    if (decoded->variant.environment_metrics.address1[0] != '\0') {
+                        msgPayload["t_string_uid"] = new JSONValue(decoded->variant.environment_metrics.address1);
+                    }
                 } else if (decoded->which_variant == meshtastic_Telemetry_air_quality_metrics_tag) {
                     msgPayload["pm10"] = new JSONValue((unsigned int)decoded->variant.air_quality_metrics.pm10_standard);
                     msgPayload["pm25"] = new JSONValue((unsigned int)decoded->variant.air_quality_metrics.pm25_standard);

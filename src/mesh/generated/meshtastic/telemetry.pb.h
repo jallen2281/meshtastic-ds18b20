@@ -113,26 +113,31 @@ typedef struct _meshtastic_EnvironmentMetrics {
     bool has_multiple_temperatures;
     bool has_temperature1;
     float temperature1;
-    uint8_t address1[8];
-    
+    char address1[17];  /* DS2431 UID as 16-char hex string + null */
+
     bool has_temperature2;
     float temperature2;
+    bool has_address2;
     uint8_t address2[8];
 
     bool has_temperature3;
     float temperature3;
+    bool has_address3;
     uint8_t address3[8];
 
     bool has_temperature4;
     float temperature4;
+    bool has_address4;
     uint8_t address4[8];
 
     bool has_temperature5;
     float temperature5;
+    bool has_address5;
     uint8_t address5[8];
 
     bool has_temperature6;
     float temperature6;
+    bool has_address6;
     uint8_t address6[8];
 
     /* Relative humidity percent measured */
@@ -399,6 +404,12 @@ extern "C" {
 #define meshtastic_EnvironmentMetrics_wind_gust_tag 29
 #define meshtastic_EnvironmentMetrics_wind_lull_tag 30
 #define meshtastic_EnvironmentMetrics_radiation_tag 31
+#define meshtastic_EnvironmentMetrics_address1_tag 32
+#define meshtastic_EnvironmentMetrics_address2_tag 33
+#define meshtastic_EnvironmentMetrics_address3_tag 34
+#define meshtastic_EnvironmentMetrics_address4_tag 35
+#define meshtastic_EnvironmentMetrics_address5_tag 36
+#define meshtastic_EnvironmentMetrics_address6_tag 37
 #define meshtastic_PowerMetrics_ch1_voltage_tag  1
 #define meshtastic_PowerMetrics_ch1_current_tag  2
 #define meshtastic_PowerMetrics_ch2_voltage_tag  3
@@ -483,7 +494,13 @@ X(a, STATIC,   OPTIONAL, FLOAT,    wind_speed,      27) \
 X(a, STATIC,   OPTIONAL, FLOAT,    weight,          28) \
 X(a, STATIC,   OPTIONAL, FLOAT,    wind_gust,       29) \
 X(a, STATIC,   OPTIONAL, FLOAT,    wind_lull,       30) \
-X(a, STATIC,   OPTIONAL, FLOAT,    radiation,       31)
+X(a, STATIC,   OPTIONAL, FLOAT,              radiation, 31) \
+X(a, STATIC,   SINGULAR, STRING,             address1,  32) \
+X(a, STATIC,   OPTIONAL, FIXED_LENGTH_BYTES, address2,  33) \
+X(a, STATIC,   OPTIONAL, FIXED_LENGTH_BYTES, address3,  34) \
+X(a, STATIC,   OPTIONAL, FIXED_LENGTH_BYTES, address4,  35) \
+X(a, STATIC,   OPTIONAL, FIXED_LENGTH_BYTES, address5,  36) \
+X(a, STATIC,   OPTIONAL, FIXED_LENGTH_BYTES, address6,  37)
 #define meshtastic_EnvironmentMetrics_CALLBACK NULL
 #define meshtastic_EnvironmentMetrics_DEFAULT NULL
 

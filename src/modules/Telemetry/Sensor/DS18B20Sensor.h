@@ -26,6 +26,8 @@ class DS18B20Sensor : public TelemetrySensor {
     uint8_t pin;
     std::vector<SensorReading> sensorReadings;
     std::vector<SensorAddress> cachedTStringAddresses;
+    std::vector<SensorAddress> cachedDs2431Uids;
+    std::vector<uint8_t> cachedDs2431SensorCounts;
     bool hasCachedTStringAddresses = false;
     bool discoveredTString = false;
 
@@ -40,6 +42,8 @@ class DS18B20Sensor : public TelemetrySensor {
     virtual int32_t runOnce() override;
     virtual void setup() override;
     virtual bool getMetrics(meshtastic_Telemetry *measurement) override;
+    bool getMetricsForTString(uint8_t tStringIndex, meshtastic_Telemetry *measurement);
+    uint8_t getTStringCount() const { return (uint8_t)cachedDs2431Uids.size(); }
 };
 
 #endif
