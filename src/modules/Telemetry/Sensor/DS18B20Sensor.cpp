@@ -330,7 +330,7 @@ bool DS18B20Sensor::getMetrics(meshtastic_Telemetry *measurement)
                 const uint8_t *uid = cachedDs2431Uids[i].address;
                 snprintf(measurement->variant.environment_metrics.address1, 17,
                          "%02X%02X%02X%02X%02X%02X%02X%02X",
-                         uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
+                         uid[7], uid[6], uid[5], uid[4], uid[3], uid[2], uid[1], uid[0]);
             } else if (i == 1) {
                 measurement->variant.environment_metrics.has_address2 = true;
                 memcpy(measurement->variant.environment_metrics.address2, cachedDs2431Uids[i].address, 8);
@@ -447,7 +447,7 @@ bool DS18B20Sensor::getMetricsForTString(uint8_t tStringIndex, meshtastic_Teleme
     const uint8_t *uid = cachedDs2431Uids[tStringIndex].address;
     snprintf(measurement->variant.environment_metrics.address1, 17,
              "%02X%02X%02X%02X%02X%02X%02X%02X",
-             uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
+             uid[7], uid[6], uid[5], uid[4], uid[3], uid[2], uid[1], uid[0]);
 
     return true;
 }
