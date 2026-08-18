@@ -174,7 +174,7 @@ jobs:
           ref: ${{github.event.pull_request.head.ref}}
           repository: ${{github.event.pull_request.head.repo.full_name}}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: ./
           pattern: firmware-${{matrix.arch}}-*
@@ -208,7 +208,7 @@ jobs:
             ./Meshtastic_nRF52_factory_erase*.uf2
           retention-days: 30
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: firmware-${{matrix.arch}}-${{ steps.version.outputs.version }}
           merge-multiple: true
@@ -280,7 +280,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Download deb files
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: meshtasticd_${{ steps.version.outputs.version }}_*.deb
           merge-multiple: true
@@ -352,7 +352,7 @@ jobs:
         run: echo "version=$(./bin/buildinfo.py long)" >> $GITHUB_OUTPUT
         id: version
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: firmware-${{matrix.arch}}-${{ steps.version.outputs.version }}
           merge-multiple: true
@@ -369,7 +369,7 @@ jobs:
       - name: Zip firmware
         run: zip -j -9 -r ./firmware-${{matrix.arch}}-${{ steps.version.outputs.version }}.zip ./output
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: debug-elfs-${{matrix.arch}}-${{ steps.version.outputs.version }}.zip
           merge-multiple: true
